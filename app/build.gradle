@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.mgl.totem"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
@@ -27,4 +27,8 @@ dependencies {
     compile files('libs/aws-android-sdk-s3-2.2.5.jar')
     compile files('libs/pass-v1.1.4.jar')
     compile files('libs/sdk-v1.0.0.jar')
+    compile 'com.jakewharton:butterknife:5.1.2'
+    compile 'com.squareup.retrofit:retrofit:1.6.1'
+    compile 'com.squareup.dagger:dagger:1.2.1'
+    provided 'com.squareup.dagger:dagger-compiler:1.2.1'
 }

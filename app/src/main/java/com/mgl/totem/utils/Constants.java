@@ -16,4 +16,6 @@ public class Constants {
      * put it's name in the field below.
      */
     public static final String BUCKET_NAME = "mgl.totem";
+
+    public static final String SERVER_URL = "http://192.168.1.185:8080";
 }

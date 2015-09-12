@@ -1,4 +1,4 @@
-package com.mgl.totem;
+package com.mgl.totem.activities;
 
 import android.annotation.SuppressLint;
 import android.content.ContentUris;
@@ -8,6 +8,10 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintJob;
+import android.print.PrintManager;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -15,14 +19,18 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.amazonaws.auth.CognitoCachingCredentialsProvider;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
-import com.amazonaws.regions.Regions;
+import com.mgl.totem.R;
+import com.mgl.totem.base.TotemApplication;
 import com.mgl.totem.utils.Constants;
 import com.mgl.totem.utils.Utils;
 import com.samsung.android.sdk.SsdkUnsupportedException;
@@ -33,42 +41,39 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedList;
+
+import butterknife.ButterKnife;
+import butterknife.InjectView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int RESULT_CODE = 103;
     private static final int REQUEST_TAKE_PHOTO = 3;
     private static final String TAG = MainActivity.class.getName();
+    public static String EXTRA_USER_ID = "EXTRA_USER_ID";
     private TransferUtility transferUtility;
     private String mCurrentPhotoPath;
-    private TransferObserver observer;
-    private SpassFingerprint mSpassFingerprint;
-    private Context mContext;
-    private SpassFingerprint.IdentifyListener listener;
-    private Spass mSpass;
-    private boolean isFeatureEnabled;
-    private SpassFingerprint.RegisterListener mRegisterListener;
+    private int tries = 0;
+    private WebView mWebView;
+    private LinkedList<PrintJob> mPrintJobs = new LinkedList<>();
+    private String userUniqueId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ButterKnife.inject(this);
+        ((TotemApplication) getApplication()).inject(this);
+
         transferUtility = Utils.getTransferUtility(this);
 
-        this.mContext = this;
+        userUniqueId = getIntent().getStringExtra(EXTRA_USER_ID);
 
-        mRegisterListener = new SpassFingerprint.RegisterListener() {
-            @Override
-            public void onFinished() {
-                Log.d(TAG, "registration fingers finished");
-                Log.d(TAG, "" + mSpassFingerprint.getIdentifiedFingerprintIndex());
-            }
-        };
-
-//        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//        // Ensure that there's a camera activity to handle the intent
+//        Intent takePictureIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+////        // Ensure that there's a camera activity to handle the intent
 //        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
 //            // Create the File where the photo should go
 //            File photoFile = null;
@@ -82,31 +87,21 @@ public class MainActivity extends AppCompatActivity {
 //            if (photoFile != null) {
 //                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
 //                        Uri.fromFile(photoFile));
-//                takePictureIntent.putExtra("android.intent.extras.CAMERA_FACING", 0);
+//                takePictureIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 6);
+//                takePictureIntent.putExtra(MediaStore.EXTRA_SHOW_ACTION_ICONS, false);
+//                takePictureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY,0);
 //                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
 //            }
 //        }
 
-        mSpass = new Spass();
-        try {
-            mSpass.initialize(MainActivity.this);
-        } catch (SsdkUnsupportedException e) {
-            // Error handling
-        } catch (UnsupportedOperationException e){
-            // Error handling
-        }
-        isFeatureEnabled = mSpass.isFeatureEnabled(Spass.DEVICE_FINGERPRINT);
-        if(isFeatureEnabled){
-            mSpassFingerprint = new SpassFingerprint(MainActivity.this);
-            Log.d(TAG, "YAY!! SUPPORTED!!");
 
 
-            mSpassFingerprint.registerFinger(this, mRegisterListener);
+//        doWebViewPrint();
 
-        } else {
-            Log.d(TAG, "Fingerprint Service is not supported in the device.");
-        }
+
     }
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -181,12 +176,12 @@ public class MainActivity extends AppCompatActivity {
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
+        String imageFileName = "VIDEO_" + timeStamp + "_";
         File storageDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES);
+                Environment.DIRECTORY_MOVIES);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
-                ".jpg",         /* suffix */
+                ".mp4",         /* suffix */
                 storageDir      /* directory */
         );
 
@@ -219,59 +214,48 @@ public class MainActivity extends AppCompatActivity {
         return "com.android.providers.media.documents".equals(uri.getAuthority());
     }
 
-    /*
-     * Gets the file path of the given Uri.
-     */
-    @SuppressLint("NewApi")
-    private String getPath(Uri uri) throws URISyntaxException {
-        final boolean needToCheckUri = Build.VERSION.SDK_INT >= 19;
-        String selection = null;
-        String[] selectionArgs = null;
-        // Uri is different in versions after KITKAT (Android 4.4), we need to
-        // deal with different Uris.
-        if (needToCheckUri && DocumentsContract.isDocumentUri(getApplicationContext(), uri)) {
-            if (isExternalStorageDocument(uri)) {
-                final String docId = DocumentsContract.getDocumentId(uri);
-                final String[] split = docId.split(":");
-                return Environment.getExternalStorageDirectory() + "/" + split[1];
-            } else if (isDownloadsDocument(uri)) {
-                final String id = DocumentsContract.getDocumentId(uri);
-                uri = ContentUris.withAppendedId(
-                        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
-            } else if (isMediaDocument(uri)) {
-                final String docId = DocumentsContract.getDocumentId(uri);
-                final String[] split = docId.split(":");
-                final String type = split[0];
-                if ("image".equals(type)) {
-                    uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-                } else if ("video".equals(type)) {
-                    uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-                } else if ("audio".equals(type)) {
-                    uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-                }
-                selection = "_id=?";
-                selectionArgs = new String[] {
-                        split[1]
-                };
+
+    private void doWebViewPrint() {
+        // Create a WebView object specifically for printing
+        WebView webView = new WebView(MainActivity.this);
+        webView.setWebViewClient(new WebViewClient() {
+
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return false;
             }
-        }
-        if ("content".equalsIgnoreCase(uri.getScheme())) {
-            String[] projection = {
-                    MediaStore.Images.Media.DATA
-            };
-            Cursor cursor = null;
-            try {
-                cursor = getContentResolver()
-                        .query(uri, projection, selection, selectionArgs, null);
-                int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                if (cursor.moveToFirst()) {
-                    return cursor.getString(column_index);
-                }
-            } catch (Exception e) {
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                Log.i(TAG, "page finished loading " + url);
+                createWebPrintJob(view);
+                mWebView = null;
             }
-        } else if ("file".equalsIgnoreCase(uri.getScheme())) {
-            return uri.getPath();
-        }
-        return null;
+        });
+
+        // Generate an HTML document on the fly:
+        String htmlDocument = "<html><body><h1>Test Content</h1><p>Testing, " +
+                "testing, testing...</p></body></html>";
+        webView.loadDataWithBaseURL(null, htmlDocument, "text/HTML", "UTF-8", null);
+
+        // Keep a reference to WebView object until you pass the PrintDocumentAdapter
+        // to the PrintManager
+        mWebView = webView;
+    }
+
+    private void createWebPrintJob(WebView webView) {
+
+        // Get a PrintManager instance
+        PrintManager printManager = (PrintManager) MainActivity.this.getSystemService(Context.PRINT_SERVICE);
+
+        // Create a print job with name and adapter instance
+        String jobName = getString(R.string.app_name) + " Document";
+
+        // Get a print adapter instance
+        PrintDocumentAdapter printAdapter = webView.createPrintDocumentAdapter(jobName);
+
+        PrintJob printJob = printManager.print(jobName, printAdapter, new PrintAttributes.Builder().build());
+
+        // Save the job object for later status checking
+        mPrintJobs.add(printJob);
     }
 }
