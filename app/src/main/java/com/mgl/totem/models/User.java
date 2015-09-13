@@ -10,13 +10,7 @@ public class User {
     private String uniqueUserId;
     private String profilePic;
     private LinkedList<String> videoUrls;
-
-    public User(String name, String uniqueUserId, String profilePic, LinkedList<String> videoUrls) {
-        this.name = name;
-        this.uniqueUserId = uniqueUserId;
-        this.profilePic = profilePic;
-        this.videoUrls = videoUrls;
-    }
+    private int moneyToCollect;
 
     public String getName() {
         return name;
@@ -48,5 +42,13 @@ public class User {
 
     public void setVideoUrls(LinkedList<String> videoUrls) {
         this.videoUrls = videoUrls;
+    }
+
+    public int getMoneyToCollect() {
+        return moneyToCollect;
+    }
+
+    public void setMoneyToCollect(int moneyToCollect) {
+        this.moneyToCollect = moneyToCollect;
     }
 }

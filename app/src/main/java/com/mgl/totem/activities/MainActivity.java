@@ -23,6 +23,7 @@ import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
@@ -31,11 +32,15 @@ import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
 import com.mgl.totem.R;
 import com.mgl.totem.base.TotemApplication;
+import com.mgl.totem.interfaces.TotemApiInterface;
+import com.mgl.totem.models.Registration;
 import com.mgl.totem.utils.Constants;
 import com.mgl.totem.utils.Utils;
 import com.samsung.android.sdk.SsdkUnsupportedException;
 import com.samsung.android.sdk.pass.Spass;
 import com.samsung.android.sdk.pass.SpassFingerprint;
+
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,8 +50,13 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedList;
 
+import javax.inject.Inject;
+
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import retrofit.Callback;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -59,6 +69,29 @@ public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
     private LinkedList<PrintJob> mPrintJobs = new LinkedList<>();
     private String userUniqueId;
+    private String mCurrentVideoName;
+
+    @InjectView(R.id.recordVideo)
+    ImageView recordVideo;
+    @InjectView(R.id.user_name_title)
+    TextView userName;
+
+    @InjectView(R.id.printed)
+    TextView printedText;
+    @InjectView(R.id.printedImage)
+    ImageView printedImage;
+
+    @Inject
+    TotemApiInterface api;
+    private Registration mUser;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        printedText.setVisibility(View.INVISIBLE);
+        printedImage.setVisibility(View.INVISIBLE);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,36 +105,48 @@ public class MainActivity extends AppCompatActivity {
 
         userUniqueId = getIntent().getStringExtra(EXTRA_USER_ID);
 
-//        Intent takePictureIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-////        // Ensure that there's a camera activity to handle the intent
-//        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-//            // Create the File where the photo should go
-//            File photoFile = null;
-//            try {
-//                photoFile = createImageFile();
-//            } catch (IOException ex) {
-//                // Error occurred while creating the File
-//                Log.d(TAG, "some horrible thing happened " + ex.getMessage());
-//            }
-//            // Continue only if the File was successfully created
-//            if (photoFile != null) {
-//                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
-//                        Uri.fromFile(photoFile));
-//                takePictureIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 6);
-//                takePictureIntent.putExtra(MediaStore.EXTRA_SHOW_ACTION_ICONS, false);
-//                takePictureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY,0);
-//                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-//            }
-//        }
+        api.getUserWithId(userUniqueId, new Callback<Registration>() {
+            @Override
+            public void success(Registration registration, Response response) {
+                mUser = registration;
+                // fill UI
+                Log.d(TAG, "SUCCESS: " + mUser.getName());
 
+                userName.setText(String.format(getString(R.string.welcome_back), mUser.getName()));
+            }
 
+            @Override
+            public void failure(RetrofitError error) {
+                Log.d(TAG, "some error happened");
+            }
+        });
 
-//        doWebViewPrint();
-
-
+        recordVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+                // Ensure that there's a camera activity to handle the intent
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                    // Create the File where the photo should go
+                    File photoFile = null;
+                    try {
+                        photoFile = createImageFile();
+                    } catch (IOException ex) {
+                        // Error occurred while creating the File
+                        Log.d(TAG, "some horrible thing happened " + ex.getMessage());
+                    }
+                    // Continue only if the File was successfully created
+                    if (photoFile != null) {
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
+                        takePictureIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 4);
+                        takePictureIntent.putExtra(MediaStore.EXTRA_SHOW_ACTION_ICONS, false);
+                        takePictureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
+                        startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+                    }
+                }
+            }
+        });
     }
-
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -128,12 +173,26 @@ public class MainActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         if (resultCode == RESULT_OK) {
+            beginUpload(mCurrentPhotoPath);
+            doWebViewPrint();
+            mUser.setVideo(mCurrentVideoName);
 
-//            Uri uri = data.getData();
+            printedText.setVisibility(View.INVISIBLE);
+            printedImage.setVisibility(View.INVISIBLE);
 
-//                String path = getPath(uri);
-                beginUpload(mCurrentPhotoPath);
+            recordVideo.setImageDrawable(getDrawable(R.drawable.greentick));
 
+            api.postUser(mUser, new Callback<String>() {
+                @Override
+                public void success(String s, Response response) {
+                    Log.d(TAG, "user updated");
+                }
+
+                @Override
+                public void failure(RetrofitError error) {
+                    Log.d(TAG, "some error while updateing user: "  + error.getMessage());
+                }
+            });
         }
     }
 
@@ -187,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = image.getAbsolutePath();
+        mCurrentVideoName = image.getName();
         return image;
     }
 
@@ -233,9 +293,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Generate an HTML document on the fly:
-        String htmlDocument = "<html><body><h1>Test Content</h1><p>Testing, " +
-                "testing, testing...</p></body></html>";
-        webView.loadDataWithBaseURL(null, htmlDocument, "text/HTML", "UTF-8", null);
+        String htmlDocument = "<html><body><h1>This is your voucher " + mUser.getName() + "</h1><p>You can go to an ATM, " +
+                "and pick up your 20E.</p><img src='file:///android_asset/barcode.png'></body></html>";
+        webView.loadDataWithBaseURL("file:///android_asset/images/", htmlDocument, "text/HTML", "UTF-8", null);
 
         // Keep a reference to WebView object until you pass the PrintDocumentAdapter
         // to the PrintManager

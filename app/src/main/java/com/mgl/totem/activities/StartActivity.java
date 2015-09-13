@@ -38,6 +38,13 @@ public class StartActivity extends AppCompatActivity {
     private Runnable startActivityRunnable;
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        scanFinger.setImageDrawable(getDrawable(R.drawable.fingerprint));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
@@ -61,7 +68,7 @@ public class StartActivity extends AppCompatActivity {
                 String uniqueId = "none";
                 try {
                     FingerprintIndex = mSpassFingerprint.getIdentifiedFingerprintIndex();
-                    uniqueId = mSpassFingerprint.getRegisteredFingerprintUniqueID().toString();
+                    uniqueId = mSpassFingerprint.getRegisteredFingerprintUniqueID().get(1).toString();
                 } catch (IllegalStateException ise) {
                     Log.d(TAG,ise.getMessage());
                 }

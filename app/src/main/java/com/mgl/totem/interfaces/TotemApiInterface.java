@@ -1,8 +1,11 @@
 package com.mgl.totem.interfaces;
 
+import com.mgl.totem.activities.RegisterActivity;
+import com.mgl.totem.models.Registration;
 import com.mgl.totem.models.User;
 
 import retrofit.Callback;
+import retrofit.http.Body;
 import retrofit.http.GET;
 import retrofit.http.POST;
 import retrofit.http.Path;
@@ -12,8 +15,8 @@ import retrofit.http.Path;
  */
 public interface TotemApiInterface {
     @GET("/api/user/{userId}")
-    void getUserWithId(@Path("userId") String userId, Callback<User> user);
+    void getUserWithId(@Path("userId") String userId, Callback<Registration> user);
 
-//    @POST("/payments/payment-methods")
-//    void notifyCartTransaction(@Body CartAndNonce cart, Callback<String> response);
+    @POST("/api/registration")
+    void postUser(@Body Registration user, Callback<String> response);
 }
