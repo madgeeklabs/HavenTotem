@@ -8,6 +8,7 @@ public class Registration {
     private String video;
     private String name;
     private String phone;
+    private String picture;
 
     public Registration(String uniqueId, String video, String name, String phone) {
         this.uniqueId = uniqueId;
@@ -46,5 +47,9 @@ public class Registration {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getPicture() {
+        return picture;
     }
 }

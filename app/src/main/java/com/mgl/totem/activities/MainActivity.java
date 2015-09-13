@@ -5,7 +5,11 @@ import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Credentials;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.print.PrintAttributes;
@@ -22,6 +26,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +41,7 @@ import com.mgl.totem.base.TotemApplication;
 import com.mgl.totem.interfaces.TotemApiInterface;
 import com.mgl.totem.models.Registration;
 import com.mgl.totem.utils.Constants;
+import com.mgl.totem.utils.ImageHelper;
 import com.mgl.totem.utils.Utils;
 import com.samsung.android.sdk.SsdkUnsupportedException;
 import com.samsung.android.sdk.pass.Spass;
@@ -44,7 +51,10 @@ import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
@@ -71,15 +81,14 @@ public class MainActivity extends AppCompatActivity {
     private String userUniqueId;
     private String mCurrentVideoName;
 
-    @InjectView(R.id.recordVideo)
-    ImageView recordVideo;
-    @InjectView(R.id.user_name_title)
+    @InjectView(R.id.collectMoney)
+    Button collectMoney;
+    @InjectView(R.id.userNameDisplay)
     TextView userName;
-
-    @InjectView(R.id.printed)
-    TextView printedText;
-    @InjectView(R.id.printedImage)
-    ImageView printedImage;
+    @InjectView(R.id.userImage)
+    ImageView userImage;
+    @InjectView(R.id.phone_number)
+    TextView userPhone;
 
     @Inject
     TotemApiInterface api;
@@ -88,9 +97,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        printedText.setVisibility(View.INVISIBLE);
-        printedImage.setVisibility(View.INVISIBLE);
     }
 
     @Override
@@ -112,7 +118,9 @@ public class MainActivity extends AppCompatActivity {
                 // fill UI
                 Log.d(TAG, "SUCCESS: " + mUser.getName());
 
-                userName.setText(String.format(getString(R.string.welcome_back), mUser.getName()));
+                userName.setText(mUser.getName());
+                userPhone.setText(mUser.getPhone());
+                new getBitmap(Constants.S3_URL + mUser.getPicture()).execute();
             }
 
             @Override
@@ -121,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        recordVideo.setOnClickListener(new View.OnClickListener() {
+        collectMoney.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent takePictureIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
@@ -177,11 +185,6 @@ public class MainActivity extends AppCompatActivity {
             doWebViewPrint();
             mUser.setVideo(mCurrentVideoName);
 
-            printedText.setVisibility(View.INVISIBLE);
-            printedImage.setVisibility(View.INVISIBLE);
-
-            recordVideo.setImageDrawable(getDrawable(R.drawable.greentick));
-
             api.postUser(mUser, new Callback<String>() {
                 @Override
                 public void success(String s, Response response) {
@@ -190,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void failure(RetrofitError error) {
-                    Log.d(TAG, "some error while updateing user: "  + error.getMessage());
+                    Log.d(TAG, "some error while updateing user: " + error.getMessage());
                 }
             });
         }
@@ -231,6 +234,7 @@ public class MainActivity extends AppCompatActivity {
             });
 
     }
+
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -317,5 +321,37 @@ public class MainActivity extends AppCompatActivity {
 
         // Save the job object for later status checking
         mPrintJobs.add(printJob);
+    }
+
+    private class getBitmap extends AsyncTask<Void, Void, Void> {
+
+        private String uri = "";
+        public Bitmap myBitmap;
+
+        public getBitmap (String url) {
+            this.uri = url;
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                URL url = new URL(uri);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                InputStream input = connection.getInputStream();
+                myBitmap = ImageHelper.cropImageCircular(BitmapFactory.decodeStream(input), MainActivity.this);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            userImage.setImageBitmap(myBitmap);
+        }
     }
 }

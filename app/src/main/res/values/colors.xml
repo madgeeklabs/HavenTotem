@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#6CD1EA</color>
+    <color name="background">#75d1e0</color>
     <color name="gray">#C6C6C6</color>
     <color name="white">#FFFFFF</color>
     <color name="error_red">#AAFF0000</color>
@@ -8,6 +8,8 @@
     <color name="green">#00FF00</color>
     <color name="black">#000000</color>
     <color name="info_blue">#ff3fc4d5</color>
+    <color name="header">#146eb4</color>
+    <color name="complementary">#ff9900</color>
 
     <color name="nowfie_dark_purple">#4A2F57</color>
     <color name="nowfie_purple">#67337F</color>

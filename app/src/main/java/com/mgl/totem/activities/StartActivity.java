@@ -68,12 +68,14 @@ public class StartActivity extends AppCompatActivity {
                 String uniqueId = "none";
                 try {
                     FingerprintIndex = mSpassFingerprint.getIdentifiedFingerprintIndex();
-                    uniqueId = mSpassFingerprint.getRegisteredFingerprintUniqueID().get(1).toString();
+                    if (mSpassFingerprint.getRegisteredFingerprintUniqueID().get(FingerprintIndex) != null) {
+                        uniqueId = mSpassFingerprint.getRegisteredFingerprintUniqueID().get(FingerprintIndex).toString();
+                    }
                 } catch (IllegalStateException ise) {
                     Log.d(TAG,ise.getMessage());
                 }
                 if (eventStatus == SpassFingerprint.STATUS_AUTHENTIFICATION_SUCCESS) {
-                    Log.d(TAG, "onFinished() : Identify authentification Success with FingerprintIndex : " + FingerprintIndex + "ID: " + uniqueId);
+                    Log.d(TAG, "onFinished() : Identify authentification Success with FingerprintIndex : " + FingerprintIndex + " ID: " + uniqueId);
                     userUniqueId = uniqueId;
                     scanFinger.setImageDrawable(getDrawable(R.drawable.greentick));
                     Handler handler = new Handler();

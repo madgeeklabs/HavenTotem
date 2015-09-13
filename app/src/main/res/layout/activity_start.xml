@@ -1,6 +1,6 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-    android:background="@color/background"
+    android:background="@color/white"
     android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
@@ -8,10 +8,11 @@
     tools:context="com.mgl.totem.activities.StartActivity">
 
     <ImageView
-        android:layout_width="600dp"
-        android:layout_height="600dp"
-        android:layout_centerInParent="true"
-        android:src="@drawable/totem"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/fingerHolder"
+        android:src="@drawable/icon"
         android:id="@+id/imageView" />
 
     <TextView
@@ -20,14 +21,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="70sp"
-        android:text="Welcome to Haven"
-        android:id="@+id/textView" />
+        android:text="WELCOME TO HAVEN"
+        android:id="@+id/welcome" />
 
     <LinearLayout
         android:gravity="center_horizontal"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-
+        android:id="@+id/fingerHolder"
         android:orientation="vertical"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
@@ -57,5 +58,14 @@
             android:text="place your finger to start"
             android:id="@+id/textView2" />
     </LinearLayout>
+
+    <ImageView
+        android:layout_marginTop="40dp"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/welcome"
+        android:src="@drawable/flags"
+        android:layout_width="500dp"
+        android:layout_height="wrap_content"
+        android:id="@+id/imageView4" />
 
 </RelativeLayout>

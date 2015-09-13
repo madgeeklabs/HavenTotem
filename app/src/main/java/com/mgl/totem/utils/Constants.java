@@ -18,4 +18,6 @@ public class Constants {
     public static final String BUCKET_NAME = "mgl.totem";
 
     public static final String SERVER_URL = "http://haven.ngrok.io";
+
+    public static final String S3_URL = "http://s3-eu-west-1.amazonaws.com/mgl.totem/";
 }
